@@ -1,0 +1,514 @@
+{
+  "name": "Neuer Anruf",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "0df4fa6d-333b-4d31-b626-c98df7b1c037",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1520,
+        -1136
+      ],
+      "id": "499ee9f5-9c88-4989-bcc3-e58ba8fcd88e",
+      "name": "Webhook",
+      "webhookId": "0df4fa6d-333b-4d31-b626-c98df7b1c037"
+    },
+    {
+      "parameters": {
+        "url": "=https://saelker.venabo.de/api/v1/phone_numbers?filter[phoneNumber]={{ $json.body.formatted_caller_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "accept",
+              "value": "application/json"
+            },
+            {
+              "name": "x-api-token",
+              "value": "f99b7e11-926a-48b4-8a9f-280516acd9ba"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1168,
+        -1136
+      ],
+      "id": "4174e3f6-175b-437d-ad01-84e49a35e36e",
+      "name": "HTTP Request",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        448,
+        -1456
+      ],
+      "id": "5a8779fa-4cc2-48a4-ab36-0afd4182fa4d",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"type\": \"conversation_initiation_client_data\",\n  \"dynamic_variables\": {\n    \"Firma\": \"{{ $('HTTP Request1').item.json.name }}\",\n    \"Vorname\": \"{{ $('HTTP Request2').item.json.firstName }}\",\n    \"Nachname\": \"{{ $('HTTP Request2').item.json.lastName }}\",\n    \"Ansprache\": \"{{ $json.Ansprache.anrede_text }}\",\n    \"addressID\": \"{{ $('HTTP Request').item.json.addressId }}\"\n}\n} ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        272,
+        -1456
+      ],
+      "id": "35381f9c-02e4-4c8d-b499-fdbdb68471ac",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "url": "=https://saelker.venabo.de/api/v1/customers?filter[id]={{ $json.addressId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "accept",
+              "value": "application/json"
+            },
+            {
+              "name": "x-api-token",
+              "value": "f99b7e11-926a-48b4-8a9f-280516acd9ba"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -800,
+        -1296
+      ],
+      "id": "8c5a5ff4-b617-4ce0-99f7-19704b981003",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "url": "=https://saelker.venabo.de/api/v1/contact_persons?filter[id]={{ $('HTTP Request').item.json.contactPersonId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "accept",
+              "value": "application/json"
+            },
+            {
+              "name": "x-api-token",
+              "value": "f99b7e11-926a-48b4-8a9f-280516acd9ba"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -448,
+        -1456
+      ],
+      "id": "5bcd3e77-56ee-4be1-b69a-5085cd1c8b88",
+      "name": "HTTP Request2"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Die Function-Node erhält ein Array von Items.\n// Jedes Item ist ein Objekt, das die Daten des vorherigen Nodes enthält.\nreturn items.map(item => {\n  // Überprüfe, ob body und caller_id existieren, um Fehler zu vermeiden\n  if (item.json.body && item.json.body.caller_id) {\n    const originalPhoneNumber = item.json.body.caller_id;\n    const transformedPhoneNumber = originalPhoneNumber.replace('+', '00');\n\n    // Füge die transformierte Nummer zu den bestehenden Daten hinzu\n    // Du kannst sie entweder zu 'body' hinzufügen, ein neues Feld erstellen,\n    // oder das Original überschreiben. Hier erstellen wir ein neues Feld.\n    item.json.body.formatted_caller_id = transformedPhoneNumber;\n\n    // Optional: Originalfeld überschreiben\n    // item.json.body.caller_id = transformedPhoneNumber;\n\n  } else {\n    // Optional: Logge eine Warnung, wenn caller_id nicht gefunden wird\n    console.warn(\"caller_id not found in item.json.body for item:\", item);\n    // Du könntest hier auch ein Default-Wert setzen oder das Item unberührt lassen\n  }\n  return item; // Gib das modifizierte Item zurück\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1344,
+        -1136
+      ],
+      "id": "0a1bee77-30e2-4832-bf08-9c1e83f50e07",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e7193a02-5e25-4f2a-a08b-4c9fc4310add",
+              "leftValue": "={{ $('HTTP Request').item.json.contactPersonId }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -624,
+        -1296
+      ],
+      "id": "f895f059-d435-45d8-87bd-b2f76a9fbe03",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1-nano",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1-NANO"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Du bist ein Sprachmodell, das Vornamen analysiert, um das passende Geschlecht (männlich/weiblich) zu bestimmen. Deine Aufgabe ist es, für einen gegebenen Vornamen anzugeben, ob die Person als \"Herr\" oder \"Frau\" angesprochen wird.\n\nGib die Antwort IMMER als JSON-Objekt zurück.\n\nDas JSON-Objekt soll folgende Felder enthalten:\n- **\"vorname\"**: Der von dir analysierte Vorname.\n- **\"anrede\"**: Der passende Anredetitel (\"Herr\" oder \"Frau\").\n- **\"unsicher\"**: Ein boolean-Wert (true/false). Setze ihn auf \"true\", wenn die Bestimmung nicht eindeutig ist (z.B. bei geschlechtsneutralen Namen oder wenn der Name in verschiedenen Kulturen unterschiedliche Geschlechter haben kann). Ansonsten \"false\".\n\nFür den Vornamen \"{{ $json.firstName }}\""
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -256,
+        -1456
+      ],
+      "id": "625a56b3-dc69-41ef-b29d-32bb994c85f4",
+      "name": "OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "0mUwePgXIdbaS7Dk",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  let anredeText;\n\n  // Zugriff auf die Daten der vorherigen Nodes\n  const unsicher = $input.first().json.message.content.unsicher;\n  const anrede = $input.first().json.message.content.anrede;\n\n  // Annahme: Die Namen der HTTP Request Nodes sind 'HTTP Request1' und 'HTTP Request2'\n  // und die relevanten Daten sind direkt unter .json verfügbar.\n  const nameFromHttpRequest1 = $('HTTP Request1').first().json.name; // Annahme: Daten kommen über 'headers'\n  const lastNameFromHttpRequest2 = $('HTTP Request2').first().json.lastName; // Annahme: Daten kommen über 'headers'\n\n  // WICHTIG: Die oben genannten Pfade zu 'HTTP Request1' und 'HTTP Request2'\n  // sind Annahmen! Überprüfe den tatsächlichen Input der Function-Node,\n  // um die korrekten Pfade zu finden.\n  // Oft liegen diese Daten direkt im Item, wenn die HTTP Request Nodes vor der Function Node liegen.\n  // Beispiel:\n  // const nameFromHttpRequest1 = item.json.nameFromRequest1;\n  // const lastNameFromHttpRequest2 = item.json.lastNameFromRequest2;\n  // Oder wenn du die HTTP Request Nodes einzeln abfragst:\n  // const nameFromHttpRequest1 = $node['HTTP Request1'].json.name; // Nur wenn HTTP Request1 direkt vor dieser Node ist, oder mit einem Get/Set Node die Daten zusammengefügt wurden\n  // const lastNameFromHttpRequest2 = $node['HTTP Request2'].json.lastName; // Gleiches hier\n\n  // Logik zur Bestimmung des anredeText\n  if (unsicher === true) {\n    anredeText = nameFromHttpRequest1;\n  } else if (unsicher === false && (anrede === \"Herr\" || anrede === \"Frau\")) {\n    anredeText = `${anrede} ${lastNameFromHttpRequest2}`;\n  } else {\n    // Fallback oder Fehlerbehandlung, falls die Bedingungen nicht passen\n    anredeText = \"Unbekannt\"; // Oder ein leerer String, je nach Anforderung\n    console.warn(\"Unerwarteter Fall für Ansprache:\", JSON.stringify(item.json));\n  }\n\n  // Erstelle das JSON-Objekt für die Ausgabe\n  item.json.Ansprache = {\n    \"anrede_text\": anredeText\n  };\n\n  return item;\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        -1456
+      ],
+      "id": "e702cf8a-c5ba-40e6-8279-8ab1b6d18346",
+      "name": "Code1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -256,
+        -1136
+      ],
+      "id": "371eb22e-fdd7-4fec-bd14-b9a4f01dc376",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"type\": \"conversation_initiation_client_data\",\n  \"dynamic_variables\": {\n    \"Firma\": \"{{ $('HTTP Request1').item.json.name }}\",\n    \"Vorname\": \"\",\n    \"Nachname\": \"\",\n    \"Ansprache\": \"\",\n    \"addressID\": \"{{ $('HTTP Request').item.json.addressId }}\"\n}\n} ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -448,
+        -1136
+      ],
+      "id": "486f889a-7f7d-481b-b8b0-8738021fb6b3",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -624,
+        -976
+      ],
+      "id": "3a3389c0-0f0f-4d56-87c7-18238e4f6971",
+      "name": "Respond to Webhook2"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"type\": \"conversation_initiation_client_data\",\n  \"dynamic_variables\": {\n    \"Firma\": \"\",\n    \"Vorname\": \"\",\n    \"Nachname\": \"\",\n    \"Ansprache\": \"\",\n    \"addressID\": \"\"\n}\n} ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -800,
+        -976
+      ],
+      "id": "a3c1fc0d-db07-4e35-9abb-a7acbbb46518",
+      "name": "Edit Fields2"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "81cb6d34-8a1a-4603-8563-a78311fe66dc",
+              "leftValue": "={{ $json }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -976,
+        -1136
+      ],
+      "id": "7663a61f-16b8-441d-ae6b-c258aead32cf",
+      "name": "If1"
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "emvion.app.n8n.cloud",
+            "user-agent": "Python/3.12 aiohttp/3.11.16",
+            "content-length": "163",
+            "accept": "*/*",
+            "accept-encoding": "gzip, br",
+            "cdn-loop": "cloudflare; loops=1; subreqs=1",
+            "cf-connecting-ip": "34.59.11.47",
+            "cf-ew-via": "15",
+            "cf-ipcountry": "US",
+            "cf-ray": "954bbcd5f2810271-ORD",
+            "cf-visitor": "{\"scheme\":\"https\"}",
+            "cf-worker": "n8n.cloud",
+            "content-type": "application/json",
+            "x-forwarded-for": "34.59.11.47, 172.70.179.217",
+            "x-forwarded-host": "emvion.app.n8n.cloud",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "traefik-prod-users-gwc-45-5cf4858c8f-9lvrd",
+            "x-is-trusted": "yes",
+            "x-real-ip": "34.59.11.47"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "caller_id": "+491704166266",
+            "agent_id": "agent_01jy46n7m4e80sdj0d82efy7xj",
+            "called_number": "+4959719434998",
+            "call_sid": "CA89ee5737a73a9ff8e026c9ecd7cba110"
+          },
+          "webhookUrl": "https://emvion.app.n8n.cloud/webhook/0df4fa6d-333b-4d31-b626-c98df7b1c037",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request2": {
+      "main": [
+        [
+          {
+            "node": "OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "2baf55a5-c09a-4566-a9e4-31bf12851476",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ab931d83efe93bacaffa19e2f67fe05f32a48e6a387331528a707649de6b08b6"
+  },
+  "id": "WFMhlPSJ66AKkfXa",
+  "tags": []
+}

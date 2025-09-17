@@ -1,0 +1,924 @@
+{
+  "name": "Ticket erstellen",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "84741090-1e63-46a0-bedc-04611175510c",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        -80
+      ],
+      "id": "3fe8547c-eb93-433b-85f0-bc070ff999d1",
+      "name": "Webhook",
+      "webhookId": "84741090-1e63-46a0-bedc-04611175510c"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://saelker.venabo.de/api/v1/tickets",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "accept",
+              "value": "application/jaon"
+            },
+            {
+              "name": "x-api-token",
+              "value": "f99b7e11-926a-48b4-8a9f-280516acd9ba"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        368,
+        -80
+      ],
+      "id": "eabc2763-b946-444d-b344-f7ef89d7470a",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const transcript = $json.body.data.transcript;\nlet combinedText = \"\";\nfor (const entry of transcript) {\n  if (entry.message) {\n    const cleanMessage = entry.message.replace(/\"/g, '\\\\\"').replace(/\\r?\\n/g, ' ');\n    if (entry.role === \"agent\") {\n      combinedText += \"Agent: \" + cleanMessage + \"\\\\n\";\n    } else if (entry.role === \"user\") {\n      combinedText += \"Anrufer: \" + cleanMessage + \"\\\\n\";\n    }\n  }\n}\nreturn [{ json: { transcript: combinedText } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -480,
+        -80
+      ],
+      "id": "cebc4cde-124b-4641-91ec-400edadb6f24",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"subject\": \"{{ $('Webhook').item.json.body.data.analysis.data_collection_results.Betreff.value ? $('Webhook').item.json.body.data.analysis.data_collection_results.Betreff.value : 'Kein Betreff' }}\",\n  \"contactPerson\": \"{{ $('Webhook').item.json.body.data.conversation_initiation_client_data.dynamic_variables.Vorname && $('Webhook').item.json.body.data.conversation_initiation_client_data.dynamic_variables.Nachname ? $('Webhook').item.json.body.data.conversation_initiation_client_data.dynamic_variables.Vorname + ' ' + $('Webhook').item.json.body.data.conversation_initiation_client_data.dynamic_variables.Nachname : $('Webhook').item.json.body.data.analysis.data_collection_results.Ansprechpartner.value }}\",\n  \"priorityId\": \"{{ (function() { const priorityValue = $('Webhook').item.json.body.data.analysis.data_collection_results['Priorität'].value; switch (priorityValue) { case 1: return 10; case 2: return 31; case 3: return 32; case 4: return 33; case 5: return 20; case 6: return 34; case 7: return 20; case 8: return 20; case 9: return 20; default: return 20; } })() }}\",\n  \"assigneeIds\": [\n  \n  ],\n\n\n\"departmentId\": 7,\n\n  \"customerId\": \"{{ $('Webhook').item.json.body.data.conversation_initiation_client_data.dynamic_variables.addressID }}\",\n  \"comment\": \"{{ $('Webhook').item.json.body.data.analysis.data_collection_results.Zusammenfassung.rationale.replace(/\"/g, '\\\\\"') }}\\n\\n<b>----- Infos -----</b>\\n<b>Telefonnummer: <a href=\"tel:{{ $('Webhook').item.json.body.data.conversation_initiation_client_data.dynamic_variables.system__caller_id }}\">{{ $('Webhook').item.json.body.data.conversation_initiation_client_data.dynamic_variables.system__caller_id }}</a></b>\\n<b>Gesprächsdauer (Sekunden):</b> {{ $('Webhook').item.json.body.data.conversation_initiation_client_data.dynamic_variables.system__call_duration_secs }}\\n<b>Priorität:</b> {{ $json.message.content['Priorität'] ? $json.message.content['Priorität'].replace(/\"/g, '\\\\\"') : 'N/A' }}\\n<b>Stimmung:</b> {{ $json.message.content.Stimmung ? $json.message.content.Stimmung.replace(/\"/g, '\\\\\"') : 'N/A' }}\\n\\n<b>----- Transcript -----</b>\\n  {{ ($('Code').item.json.transcript).replaceAll(\"Agent:\", \"Agent:\").replaceAll(\"Anrufer:\", \"Anrufer:\") }}\"\n}",
+        "includeOtherFields": "={{ false }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        128,
+        -80
+      ],
+      "id": "ec05fdd5-84ef-4925-a40f-40a50c8d2236",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1-nano",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1-NANO"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Ich habe zwei Textabschnitte aus einem System, die ich gerne ins Deutsche übersetzen lassen würde. Gib die Übersetzungen anschließend im JSON-Format zurück, wobei die Originalbezeichnungen der Felder beibehalten werden sollen.\n\nHier sind die Textabschnitte:\n\n1. Text für \"Stimmung\":\n   \"{{ $('Webhook').item.json.body.data.analysis.evaluation_criteria_results.gute_stimmung.rationale }}\"\n\n2. Text für \"Priorität\":\n   \"{{ $('Webhook').item.json.body.data.analysis.data_collection_results['Priorität'].rationale }}\"\n\nDas gewünschte JSON-Format sollte so aussehen:\n\n{\n  \"Stimmung\": \"Übersetzung des Stimmungstextes hier\",\n  \"Priorität\": \"Übersetzung des Prioritätstextes hier\"\n}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -256,
+        -80
+      ],
+      "id": "c5f9735a-80c1-4665-be22-c34358219aa4",
+      "name": "OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "0mUwePgXIdbaS7Dk",
+          "name": "OpenAi account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "emvion.app.n8n.cloud",
+            "user-agent": "ElevenLabs/1.0",
+            "content-length": "18925",
+            "accept": "*/*",
+            "accept-encoding": "gzip, br",
+            "cdn-loop": "cloudflare; loops=1; subreqs=1",
+            "cf-connecting-ip": "34.59.11.47",
+            "cf-ew-via": "15",
+            "cf-ipcountry": "US",
+            "cf-ray": "98013f14255e4df3-MCI",
+            "cf-visitor": "{\"scheme\":\"https\"}",
+            "cf-worker": "n8n.cloud",
+            "content-type": "application/json",
+            "elevenlabs-signature": "t=1758034962,v0=33269150d46858e39f8615ff6ffa04827705bff5c6ad3b5ca050fd1aea3c3586",
+            "x-forwarded-for": "34.59.11.47, 172.68.150.62",
+            "x-forwarded-host": "emvion.app.n8n.cloud",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "traefik-prod-users-gwc-45-5cf4858c8f-dd5k2",
+            "x-is-trusted": "yes",
+            "x-real-ip": "34.59.11.47"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "type": "post_call_transcription",
+            "event_timestamp": 1758034962,
+            "data": {
+              "agent_id": "agent_01jy46n7m4e80sdj0d82efy7xj",
+              "conversation_id": "conv_5001k59gntb3f5hr6e1m70jnkcmf",
+              "status": "done",
+              "user_id": null,
+              "transcript": [
+                {
+                  "role": "agent",
+                  "message": "Hallo Herr Mazanowski, hier ist Viona, der KI-gestützte Telefonassistent der Sälker IT Solution. Dieses Gespräch wird zum Zweck der Serviceverbesserung und Problemlösung aufgezeichnet und verarbeitet. Wie kann ich Ihnen heute weiterhelfen?",
+                  "multivoice_message": null,
+                  "tool_calls": [],
+                  "tool_results": [],
+                  "feedback": null,
+                  "llm_override": null,
+                  "time_in_call_secs": 0,
+                  "conversation_turn_metrics": {
+                    "metrics": {
+                      "convai_tts_service_ttfb": {
+                        "elapsed_time": 0.15044392900017556
+                      }
+                    }
+                  },
+                  "rag_retrieval_info": null,
+                  "llm_usage": null,
+                  "interrupted": false,
+                  "original_message": null,
+                  "source_medium": null
+                },
+                {
+                  "role": "user",
+                  "message": "Ich kann mich mit meiner E-Mail-Adresse nicht mehr bei M365 einloggen.",
+                  "multivoice_message": null,
+                  "tool_calls": [],
+                  "tool_results": [],
+                  "feedback": null,
+                  "llm_override": null,
+                  "time_in_call_secs": 14,
+                  "conversation_turn_metrics": {
+                    "metrics": {
+                      "convai_asr_trailing_service_latency": {
+                        "elapsed_time": 0.11614055799873313
+                      }
+                    }
+                  },
+                  "rag_retrieval_info": null,
+                  "llm_usage": null,
+                  "interrupted": false,
+                  "original_message": null,
+                  "source_medium": "audio"
+                },
+                {
+                  "role": "agent",
+                  "message": "Ich verstehe, dass Sie sich nicht mehr bei M365 einloggen können. Das ist ärgerlich. Können Sie mir bitte Ihre E-Mail-Adresse nennen, mit der Sie sich anmelden möchten?",
+                  "multivoice_message": null,
+                  "tool_calls": [],
+                  "tool_results": [],
+                  "feedback": null,
+                  "llm_override": null,
+                  "time_in_call_secs": 20,
+                  "conversation_turn_metrics": {
+                    "metrics": {
+                      "convai_llm_service_ttf_sentence": {
+                        "elapsed_time": 0.46205886299867416
+                      },
+                      "convai_llm_service_ttfb": {
+                        "elapsed_time": 0.32785403299931204
+                      },
+                      "convai_llm_service_tt_last_sentence": {
+                        "elapsed_time": 0.5051863350017811
+                      },
+                      "convai_tts_service_ttfb": {
+                        "elapsed_time": 0.13512252800137503
+                      }
+                    }
+                  },
+                  "rag_retrieval_info": null,
+                  "llm_usage": {
+                    "model_usage": {
+                      "gemini-2.5-flash-lite": {
+                        "input": {
+                          "tokens": 1852,
+                          "price": 0.00018520000000000003
+                        },
+                        "input_cache_read": {
+                          "tokens": 0,
+                          "price": 0
+                        },
+                        "input_cache_write": {
+                          "tokens": 0,
+                          "price": 0
+                        },
+                        "output_total": {
+                          "tokens": 43,
+                          "price": 0.000017199999999999998
+                        }
+                      }
+                    }
+                  },
+                  "interrupted": false,
+                  "original_message": null,
+                  "source_medium": null
+                },
+                {
+                  "role": "user",
+                  "message": "marzanowski.venabo.de",
+                  "multivoice_message": null,
+                  "tool_calls": [],
+                  "tool_results": [],
+                  "feedback": null,
+                  "llm_override": null,
+                  "time_in_call_secs": 31,
+                  "conversation_turn_metrics": {
+                    "metrics": {
+                      "convai_asr_trailing_service_latency": {
+                        "elapsed_time": 0.13232815799710806
+                      }
+                    }
+                  },
+                  "rag_retrieval_info": null,
+                  "llm_usage": null,
+                  "interrupted": false,
+                  "original_message": null,
+                  "source_medium": "audio"
+                },
+                {
+                  "role": "agent",
+                  "message": "Vielen Dank, Herr Mazanowski. Ich habe Ihre E-Mail-Adresse notiert. Können Sie mir bitte das genaue Problem beschreiben, das auftritt, wenn Sie versuchen, sich anzumelden? Erhalten Sie eine bestimmte Fehlermeldung?",
+                  "multivoice_message": null,
+                  "tool_calls": [],
+                  "tool_results": [],
+                  "feedback": null,
+                  "llm_override": null,
+                  "time_in_call_secs": 35,
+                  "conversation_turn_metrics": {
+                    "metrics": {
+                      "convai_llm_service_ttf_sentence": {
+                        "elapsed_time": 0.3677295330053312
+                      },
+                      "convai_llm_service_ttfb": {
+                        "elapsed_time": 0.2278733600032865
+                      },
+                      "convai_llm_service_tt_last_sentence": {
+                        "elapsed_time": 0.46876089600118576
+                      },
+                      "convai_tts_service_ttfb": {
+                        "elapsed_time": 0.13401773999794386
+                      }
+                    }
+                  },
+                  "rag_retrieval_info": null,
+                  "llm_usage": {
+                    "model_usage": {
+                      "gemini-2.5-flash-lite": {
+                        "input": {
+                          "tokens": 1903,
+                          "price": 0.00019030000000000002
+                        },
+                        "input_cache_read": {
+                          "tokens": 0,
+                          "price": 0
+                        },
+                        "input_cache_write": {
+                          "tokens": 0,
+                          "price": 0
+                        },
+                        "output_total": {
+                          "tokens": 50,
+                          "price": 0.00002
+                        }
+                      }
+                    }
+                  },
+                  "interrupted": false,
+                  "original_message": null,
+                  "source_medium": null
+                },
+                {
+                  "role": "user",
+                  "message": "Beim Einloggen kommt der Fehler, dass die E-Mail-Adresse nicht bekannt ist.",
+                  "multivoice_message": null,
+                  "tool_calls": [],
+                  "tool_results": [],
+                  "feedback": null,
+                  "llm_override": null,
+                  "time_in_call_secs": 46,
+                  "conversation_turn_metrics": {
+                    "metrics": {
+                      "convai_asr_trailing_service_latency": {
+                        "elapsed_time": 0.22221876799449092
+                      }
+                    }
+                  },
+                  "rag_retrieval_info": null,
+                  "llm_usage": null,
+                  "interrupted": false,
+                  "original_message": null,
+                  "source_medium": "audio"
+                },
+                {
+                  "role": "agent",
+                  "message": "Ich verstehe. Sie erhalten die Meldung, dass Ihre E-Mail-Adresse nicht bekannt ist. Können Sie mir bitte sagen, seit wann dieses Problem besteht und ob Sie in letzter Zeit Änderungen an Ihrem Konto vorgenommen haben?",
+                  "multivoice_message": null,
+                  "tool_calls": [],
+                  "tool_results": [],
+                  "feedback": null,
+                  "llm_override": null,
+                  "time_in_call_secs": 52,
+                  "conversation_turn_metrics": {
+                    "metrics": {
+                      "convai_llm_service_ttf_sentence": {
+                        "elapsed_time": 0.33256301099754637
+                      },
+                      "convai_llm_service_ttfb": {
+                        "elapsed_time": 0.2214010559982853
+                      },
+                      "convai_llm_service_tt_last_sentence": {
+                        "elapsed_time": 0.4512266689998796
+                      },
+                      "convai_tts_service_ttfb": {
+                        "elapsed_time": 0.10764763999759452
+                      }
+                    }
+                  },
+                  "rag_retrieval_info": null,
+                  "llm_usage": {
+                    "model_usage": {
+                      "gemini-2.5-flash-lite": {
+                        "input": {
+                          "tokens": 1970,
+                          "price": 0.000197
+                        },
+                        "input_cache_read": {
+                          "tokens": 0,
+                          "price": 0
+                        },
+                        "input_cache_write": {
+                          "tokens": 0,
+                          "price": 0
+                        },
+                        "output_total": {
+                          "tokens": 44,
+                          "price": 0.0000176
+                        }
+                      }
+                    }
+                  },
+                  "interrupted": false,
+                  "original_message": null,
+                  "source_medium": null
+                },
+                {
+                  "role": "user",
+                  "message": "Das Problem besteht seit heute. Ich habe in der letzten Zeit keine Änderungen vorgenommen. Kein Passwort geändert und auch sonst nichts geändert.",
+                  "multivoice_message": null,
+                  "tool_calls": [],
+                  "tool_results": [],
+                  "feedback": null,
+                  "llm_override": null,
+                  "time_in_call_secs": 64,
+                  "conversation_turn_metrics": {
+                    "metrics": {
+                      "convai_asr_trailing_service_latency": {
+                        "elapsed_time": 0.20192579300055513
+                      }
+                    }
+                  },
+                  "rag_retrieval_info": null,
+                  "llm_usage": null,
+                  "interrupted": false,
+                  "original_message": null,
+                  "source_medium": "audio"
+                },
+                {
+                  "role": "agent",
+                  "message": "Vielen Dank für die Information, Herr Mazanowski. Da das Problem erst seit heute besteht und Sie keine Änderungen vorgenommen haben, könnte es sich um ein vorübergehendes Problem mit dem System handeln. Ich werde ein Ticket für unsere IT-Abteilung erstellen, damit diese sich das genauer ansehen kann.\n\nHaben Sie noch weitere Fragen oder Anliegen, bei denen ich Ihnen behilflich sein kann?",
+                  "multivoice_message": null,
+                  "tool_calls": [],
+                  "tool_results": [],
+                  "feedback": null,
+                  "llm_override": null,
+                  "time_in_call_secs": 73,
+                  "conversation_turn_metrics": {
+                    "metrics": {
+                      "convai_llm_service_ttf_sentence": {
+                        "elapsed_time": 0.3539240729951416
+                      },
+                      "convai_llm_service_ttfb": {
+                        "elapsed_time": 0.2490216469959705
+                      },
+                      "convai_llm_service_tt_last_sentence": {
+                        "elapsed_time": 0.584512850997271
+                      },
+                      "convai_tts_service_ttfb": {
+                        "elapsed_time": 0.12424584600375965
+                      }
+                    }
+                  },
+                  "rag_retrieval_info": null,
+                  "llm_usage": {
+                    "model_usage": {
+                      "gemini-2.5-flash-lite": {
+                        "input": {
+                          "tokens": 2039,
+                          "price": 0.0002039
+                        },
+                        "input_cache_read": {
+                          "tokens": 0,
+                          "price": 0
+                        },
+                        "input_cache_write": {
+                          "tokens": 0,
+                          "price": 0
+                        },
+                        "output_total": {
+                          "tokens": 79,
+                          "price": 0.0000316
+                        }
+                      }
+                    }
+                  },
+                  "interrupted": false,
+                  "original_message": null,
+                  "source_medium": null
+                },
+                {
+                  "role": "user",
+                  "message": "Nein.",
+                  "multivoice_message": null,
+                  "tool_calls": [],
+                  "tool_results": [],
+                  "feedback": null,
+                  "llm_override": null,
+                  "time_in_call_secs": 92,
+                  "conversation_turn_metrics": {
+                    "metrics": {
+                      "convai_asr_trailing_service_latency": {
+                        "elapsed_time": 0.16833386100188363
+                      }
+                    }
+                  },
+                  "rag_retrieval_info": null,
+                  "llm_usage": null,
+                  "interrupted": false,
+                  "original_message": null,
+                  "source_medium": "audio"
+                },
+                {
+                  "role": "agent",
+                  "message": "Vielen Dank für Ihren Anruf, Herr Mazanowski. Ich wünsche Ihnen einen angenehmen Tag. Auf Wiederhören!\n",
+                  "multivoice_message": null,
+                  "tool_calls": [],
+                  "tool_results": [],
+                  "feedback": null,
+                  "llm_override": null,
+                  "time_in_call_secs": 94,
+                  "conversation_turn_metrics": {
+                    "metrics": {
+                      "convai_llm_service_ttf_sentence": {
+                        "elapsed_time": 0.4391758199999458
+                      },
+                      "convai_llm_service_ttfb": {
+                        "elapsed_time": 0.3494423339943751
+                      },
+                      "convai_llm_service_tt_last_sentence": {
+                        "elapsed_time": 0.4821282220000285
+                      },
+                      "convai_tts_service_ttfb": {
+                        "elapsed_time": 0.15783869499864522
+                      }
+                    }
+                  },
+                  "rag_retrieval_info": null,
+                  "llm_usage": null,
+                  "interrupted": false,
+                  "original_message": null,
+                  "source_medium": null
+                },
+                {
+                  "role": "agent",
+                  "message": null,
+                  "multivoice_message": null,
+                  "tool_calls": [
+                    {
+                      "type": "system",
+                      "request_id": "end_call_4c04fbf135354c8a8d444375a7ae8566",
+                      "tool_name": "end_call",
+                      "params_as_json": "{\"system__message_to_speak\": \"Vielen Dank f\\u00fcr Ihren Anruf, Herr Mazanowski. Ich w\\u00fcnsche Ihnen einen angenehmen Tag. Auf Wiederh\\u00f6ren!\", \"reason\": \"Der Anrufer hat keine weiteren Anliegen mehr und das Problem wurde aufgenommen.\"}",
+                      "tool_has_been_called": true,
+                      "tool_details": null
+                    }
+                  ],
+                  "tool_results": [],
+                  "feedback": null,
+                  "llm_override": null,
+                  "time_in_call_secs": 94,
+                  "conversation_turn_metrics": {
+                    "metrics": {
+                      "convai_llm_service_ttf_sentence": {
+                        "elapsed_time": 0.4391758199999458
+                      },
+                      "convai_llm_service_ttfb": {
+                        "elapsed_time": 0.3494423339943751
+                      },
+                      "convai_llm_tool_request_generation_latency": {
+                        "elapsed_time": 0.5488851279951632
+                      },
+                      "convai_llm_service_tt_last_sentence": {
+                        "elapsed_time": 0.4821282220000285
+                      },
+                      "convai_tts_service_ttfb": {
+                        "elapsed_time": 0.15783869499864522
+                      }
+                    }
+                  },
+                  "rag_retrieval_info": null,
+                  "llm_usage": null,
+                  "interrupted": false,
+                  "original_message": null,
+                  "source_medium": null
+                },
+                {
+                  "role": "agent",
+                  "message": null,
+                  "multivoice_message": null,
+                  "tool_calls": [],
+                  "tool_results": [
+                    {
+                      "request_id": "end_call_4c04fbf135354c8a8d444375a7ae8566",
+                      "tool_name": "end_call",
+                      "result_value": "{\"result_type\":\"end_call_success\",\"status\":\"success\",\"reason\":\"Der Anrufer hat keine weiteren Anliegen mehr und das Problem wurde aufgenommen.\",\"message\":null}",
+                      "is_error": false,
+                      "tool_has_been_called": true,
+                      "tool_latency_secs": 0.5008522529969923,
+                      "dynamic_variable_updates": [],
+                      "type": "system",
+                      "result": {
+                        "result_type": "end_call_success",
+                        "status": "success",
+                        "reason": "Der Anrufer hat keine weiteren Anliegen mehr und das Problem wurde aufgenommen.",
+                        "message": null
+                      }
+                    }
+                  ],
+                  "feedback": null,
+                  "llm_override": null,
+                  "time_in_call_secs": 94,
+                  "conversation_turn_metrics": null,
+                  "rag_retrieval_info": null,
+                  "llm_usage": {
+                    "model_usage": {
+                      "gemini-2.5-flash-lite": {
+                        "input": {
+                          "tokens": 2119,
+                          "price": 0.0002119
+                        },
+                        "input_cache_read": {
+                          "tokens": 0,
+                          "price": 0
+                        },
+                        "input_cache_write": {
+                          "tokens": 0,
+                          "price": 0
+                        },
+                        "output_total": {
+                          "tokens": 76,
+                          "price": 0.000030400000000000004
+                        }
+                      }
+                    }
+                  },
+                  "interrupted": false,
+                  "original_message": null,
+                  "source_medium": null
+                }
+              ],
+              "metadata": {
+                "start_time_unix_secs": 1758034853,
+                "accepted_time_unix_secs": 1758034853,
+                "call_duration_secs": 101,
+                "cost": 680,
+                "deletion_settings": {
+                  "deletion_time_unix_secs": 1821106961,
+                  "deleted_logs_at_time_unix_secs": null,
+                  "deleted_audio_at_time_unix_secs": null,
+                  "deleted_transcript_at_time_unix_secs": null,
+                  "delete_transcript_and_pii": true,
+                  "delete_audio": true
+                },
+                "feedback": {
+                  "overall_score": null,
+                  "likes": 0,
+                  "dislikes": 0
+                },
+                "authorization_method": "signed_url",
+                "charging": {
+                  "dev_discount": false,
+                  "is_burst": false,
+                  "tier": "creator",
+                  "llm_usage": {
+                    "irreversible_generation": {
+                      "model_usage": {
+                        "gemini-2.5-flash-lite": {
+                          "input": {
+                            "tokens": 9883,
+                            "price": 0.0009883000000000001
+                          },
+                          "input_cache_read": {
+                            "tokens": 0,
+                            "price": 0
+                          },
+                          "input_cache_write": {
+                            "tokens": 0,
+                            "price": 0
+                          },
+                          "output_total": {
+                            "tokens": 292,
+                            "price": 0.0001168
+                          }
+                        }
+                      }
+                    },
+                    "initiated_generation": {
+                      "model_usage": {
+                        "gemini-2.5-flash-lite": {
+                          "input": {
+                            "tokens": 15165,
+                            "price": 0.0015165
+                          },
+                          "input_cache_read": {
+                            "tokens": 0,
+                            "price": 0
+                          },
+                          "input_cache_write": {
+                            "tokens": 0,
+                            "price": 0
+                          },
+                          "output_total": {
+                            "tokens": 324,
+                            "price": 0.0001296
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "llm_price": 0.0016461000000000002,
+                  "llm_charge": 8,
+                  "call_charge": 672
+                },
+                "phone_call": {
+                  "direction": "inbound",
+                  "phone_number_id": "phnum_01jydx003cem88s8b8j709f6nf",
+                  "agent_number": "+4959719434998",
+                  "external_number": "+4959777685526",
+                  "type": "twilio",
+                  "stream_sid": "MZb482f31fd365f75163d988888a41e220",
+                  "call_sid": "CAf043ca44094a4712d46081dc27cf81ed"
+                },
+                "batch_call": null,
+                "termination_reason": "end_call tool was called.",
+                "error": null,
+                "main_language": "de",
+                "rag_usage": null,
+                "text_only": false,
+                "features_usage": {
+                  "language_detection": {
+                    "enabled": false,
+                    "used": false
+                  },
+                  "transfer_to_agent": {
+                    "enabled": false,
+                    "used": false
+                  },
+                  "transfer_to_number": {
+                    "enabled": false,
+                    "used": false
+                  },
+                  "multivoice": {
+                    "enabled": false,
+                    "used": false
+                  },
+                  "dtmf_tones": {
+                    "enabled": false,
+                    "used": false
+                  },
+                  "external_mcp_servers": {
+                    "enabled": false,
+                    "used": false
+                  },
+                  "pii_zrm_workspace": false,
+                  "pii_zrm_agent": false,
+                  "tool_dynamic_variable_updates": {
+                    "enabled": false,
+                    "used": false
+                  },
+                  "is_livekit": false,
+                  "voicemail_detection": {
+                    "enabled": false,
+                    "used": false
+                  },
+                  "workflow": {
+                    "enabled": false,
+                    "tool_node": {
+                      "enabled": false,
+                      "used": false
+                    }
+                  },
+                  "agent_testing": {
+                    "enabled": false,
+                    "tests_ran_after_last_modification": true,
+                    "tests_ran_in_last_7_days": true
+                  }
+                },
+                "eleven_assistant": {
+                  "is_eleven_assistant": false
+                },
+                "initiator_id": null,
+                "conversation_initiation_source": "twilio",
+                "conversation_initiation_source_version": null,
+                "timezone": null
+              },
+              "analysis": {
+                "evaluation_criteria_results": {
+                  "gute_stimmung": {
+                    "criteria_id": "gute_stimmung",
+                    "result": "success",
+                    "rationale": "Der Anrufer schildert ruhig sein Problem, dass er sich nicht mehr in sein E-Mail-Konto einloggen kann. Er beantwortet die Fragen des Agenten sachlich und ohne Anzeichen von Aufregung oder Ärger. Daher kann man davon ausgehen, dass der Anrufer entspannt war."
+                  },
+                  "kundenzufriedenheit": {
+                    "criteria_id": "kundenzufriedenheit",
+                    "result": "unknown",
+                    "rationale": "Es ist unmöglich zu beurteilen, ob der Anrufer mit dem Gespräch zufrieden war, da der Anrufer keine explizite Aussage über seine Zufriedenheit gemacht hat. Der Anrufer hat lediglich bestätigt, dass er keine weiteren Fragen hat."
+                  }
+                },
+                "data_collection_results": {
+                  "Priorität": {
+                    "data_collection_id": "Priorität",
+                    "value": null,
+                    "json_schema": {
+                      "type": "number",
+                      "description": "Wähle eine passende Priorität für das Ticket anhand der Dringlichkeit und Auswirkung des Anliegens.\nVerwende das folgende Schema zur Orientierung:\n\nDie Zahlen 1, 2 oder 3: Niedrige Priorität – keine Dringlichkeit, kein unmittelbarer Handlungsbedarf (z. B. allgemeine Anfrage, Feature-Wunsch, Planungsaufgabe).\n\nDie Zahlen 4, 5 oder 6: Standardpriorität – reguläre Supportanfragen ohne akuten Zeitdruck, aber mit nachvollziehbarem Bearbeitungsbedarf (z. B. Druckerprobleme, Benutzerrechte, Softwarefehler ohne Systemausfall).\n\nDie Zahlen 7, 8 oder 9: Hohe Priorität – zeitkritische oder geschäftskritische Störungen, die schnelles Eingreifen erfordern (z. B. Systemausfall, kein E-Mail-Verkehr, Sicherheitsvorfall).\n\nHinweis: Bitte wähle die Priorität mit Bedacht – sie beeinflusst die Reaktionszeiten und Ressourcenzuteilung im Support-Team. Es muss IMMER  eine Zahl von 1 - 9 zurückgegeben werden",
+                      "dynamic_variable": "",
+                      "constant_value": ""
+                    },
+                    "rationale": "Ich kann die Priorität des Tickets nicht aus dem Gespräch ableiten, da keine explizite Prioritätsbewertung oder -auswahl durch den Agenten oder den Benutzer stattfindet. Das Gespräch dreht sich um ein Problem beim Einloggen in M365, aber es wird keine Dringlichkeit oder Auswirkung des Problems diskutiert, die eine bestimmte Priorität rechtfertigen würde."
+                  },
+                  "Ansprechpartner": {
+                    "data_collection_id": "Ansprechpartner",
+                    "value": "Herr Mazanowski",
+                    "json_schema": {
+                      "type": "string",
+                      "description": "Name des Anrufers",
+                      "dynamic_variable": "",
+                      "constant_value": ""
+                    },
+                    "rationale": "Der Name des Anrufers wird in der ersten Agent-Nachricht als \"Herr Mazanowski\" identifiziert. Daher ist der Name des Anrufers \"Herr Mazanowski\"."
+                  },
+                  "Zusammenfassung": {
+                    "data_collection_id": "Zusammenfassung",
+                    "value": "Herr Mazanowski kann sich nicht mehr mit seiner E-Mail-Adresse (marzanowski.venabo.de) bei M365 einloggen. Beim Einloggen erhält er die Fehlermeldung, dass die E-Mail-Adresse nicht bekannt ist. Das Problem besteht seit dem heutigen Tag und er hat keine Änderungen am Konto vorgenommen. Der Agent hat ein Ticket für die IT-Abteilung erstellt, da es sich möglicherweise um ein vorübergehendes Systemproblem handelt.",
+                    "json_schema": {
+                      "type": "string",
+                      "description": "Ausführliche Zusammenfassung des Problems des Anrufers, sowie aller besprochenen Details, Lösungsansätze und Reaktionen",
+                      "dynamic_variable": "",
+                      "constant_value": ""
+                    },
+                    "rationale": "Der Anrufer, Herr Mazanowski, kann sich nicht mehr mit seiner E-Mail-Adresse (marzanowski.venabo.de) bei M365 einloggen. Beim Einloggen erhält er die Fehlermeldung, dass die E-Mail-Adresse nicht bekannt ist. Das Problem besteht seit dem heutigen Tag und er hat keine Änderungen am Konto vorgenommen. Der Agent hat ein Ticket für die IT-Abteilung erstellt, da es sich möglicherweise um ein vorübergehendes Systemproblem handelt."
+                  },
+                  "Betreff": {
+                    "data_collection_id": "Betreff",
+                    "value": "Login-Problem bei M365",
+                    "json_schema": {
+                      "type": "string",
+                      "description": "Kurzer prägnanter Betreff des Problems / Wunsches",
+                      "dynamic_variable": "",
+                      "constant_value": ""
+                    },
+                    "rationale": "Der Nutzer kann sich nicht mehr bei M365 einloggen. Der Betreff des Problems ist also \"Login-Problem bei M365\"."
+                  }
+                },
+                "call_successful": "unknown",
+                "transcript_summary": "Herr Mazanowski meldet sich, da er sich nicht mehr bei M365 mit seiner E-Mail-Adresse \"marzanowski.venabo.de\" anmelden kann. Er erhält die Fehlermeldung, dass die E-Mail-Adresse unbekannt ist. Das Problem besteht seit heute und er hat keine Änderungen am Konto vorgenommen. Der KI-Assistent erstellt ein Ticket für die IT-Abteilung.",
+                "call_summary_title": "M365 Login Issue"
+              },
+              "conversation_initiation_client_data": {
+                "conversation_config_override": {
+                  "tts": null,
+                  "conversation": null,
+                  "agent": null
+                },
+                "custom_llm_extra_body": {},
+                "user_id": null,
+                "source_info": {
+                  "source": null,
+                  "version": null
+                },
+                "dynamic_variables": {
+                  "Firma": "Sälker IT Solutions GmbH & Co. KG",
+                  "Vorname": "Fabian",
+                  "Nachname": "Mazanowski",
+                  "Ansprache": "Herr Mazanowski",
+                  "addressID": "806",
+                  "system__agent_id": "agent_01jy46n7m4e80sdj0d82efy7xj",
+                  "system__current_agent_id": "agent_01jy46n7m4e80sdj0d82efy7xj",
+                  "system__conversation_id": "conv_5001k59gntb3f5hr6e1m70jnkcmf",
+                  "system__caller_id": "+4959777685526",
+                  "system__called_number": "+4959719434998",
+                  "system__call_duration_secs": 100,
+                  "system__time_utc": "2025-09-16T15:02:34.071413+00:00",
+                  "system__time": "Tuesday, 15:02 16 September 2025",
+                  "system__timezone": null,
+                  "system__call_sid": "CAf043ca44094a4712d46081dc27cf81ed"
+                }
+              }
+            }
+          },
+          "webhookUrl": "https://emvion.app.n8n.cloud/webhook/84741090-1e63-46a0-bedc-04611175510c",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "9f5c6eeb-8df7-46dc-90f3-368964c24e51",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ab931d83efe93bacaffa19e2f67fe05f32a48e6a387331528a707649de6b08b6"
+  },
+  "id": "AIsuLnCtj142TKUk",
+  "tags": []
+}
