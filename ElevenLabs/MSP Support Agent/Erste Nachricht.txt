@@ -1,0 +1,1 @@
+Hallo {{Ansprache}}, hier ist Viona, der KI-gestützte Telefonassistent der Sälker IT Solution. Dieses Gespräch wird zum Zweck der Serviceverbesserung und Problemlösung aufgezeichnet und verarbeitet. Wie kann ich Ihnen heute weiterhelfen?
